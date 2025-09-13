@@ -1,0 +1,228 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Pandora.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:utils="clr-namespace:Pandora.Utils"
+        mc:Ignorable="d" d:DesignWidth="1280" d:DesignHeight="720"
+        x:Class="Pandora.Views.MainWindow"
+        x:DataType="vm:MainWindowViewModel"
+        Icon="/Assets/icon.png"
+        Title="Pandora">
+
+    <Window.Resources>
+        <Animation x:Key="FadeInAnimation" x:SetterTargetType="Grid" Duration="0:0:3" FillMode="Forward">
+            <KeyFrame Cue="0%">
+                <Setter Property="Opacity" Value="0.0"/>
+            </KeyFrame>
+            <KeyFrame Cue="100%">
+                <Setter Property="Opacity" Value="1.0"/>
+            </KeyFrame>
+        </Animation>
+        <Animation x:Key="FadeOutAnimation" x:SetterTargetType="Grid" Duration="0:0:3" FillMode="Forward">
+            <KeyFrame Cue="0%">
+                <Setter Property="Opacity" Value="1.0"/>
+            </KeyFrame>
+            <KeyFrame Cue="100%">
+                <Setter Property="Opacity" Value="0.0"/>
+            </KeyFrame>
+        </Animation>
+    </Window.Resources>
+
+    <Design.DataContext>
+        <!-- This only sets the DataContext for the previewer in an IDE,
+             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+        <vm:MainWindowViewModel/>
+    </Design.DataContext>
+
+    <Grid>
+        <DockPanel x:Name="MainContent" LastChildFill="True">
+            <StackPanel DockPanel.Dock="Top" Orientation="Vertical">
+                <Menu>
+                    <MenuItem Header="_File">
+                        <MenuItem Header="_Exit" Command="{Binding ExitCommand}"/>
+                    </MenuItem>
+                    <MenuItem Header="FTP _Servers">
+                        <MenuItem Header="_Manage" Command="{Binding FTPManageCommand}"/>
+                    </MenuItem>
+                </Menu>
+                <DataGrid x:Name="LogDetailGrid"  Margin="10" ItemsSource="{Binding LogDetails}" IsReadOnly="True" CanUserResizeColumns="True" GridLinesVisibility="All" BorderThickness="2" BorderBrush="Green" Height="150">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Log Type" Binding="{Binding LogType}" />
+                        <DataGridTextColumn Header="Message" Binding="{Binding Message}" />
+                    </DataGrid.Columns>
+                </DataGrid>
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Vertical">
+                <DataGrid Margin="10" ItemsSource="{Binding DownloadDetails}" IsReadOnly="True" CanUserResizeColumns="True" GridLinesVisibility="All" BorderThickness="2" BorderBrush="Green" Height="150">
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="Progress" Binding="{Binding Progress}" />
+                        <DataGridTextColumn Header="Source Path" Binding="{Binding SourcePath}" />
+                        <DataGridTextColumn Header="Dest Path" Binding="{Binding DestPath}" />
+                    </DataGrid.Columns>
+                </DataGrid>
+                <StackPanel Margin="10,0,0,10" Spacing="10" Orientation="Horizontal">
+                    <Button Content="Clear Queue" Command="{Binding ClearQueueCommand}" />
+                    <Button Content="Clear Completed" Command="{Binding ClearCompletedCommand}" />
+                    <Button Content="Retry Failed" Command="{Binding RetryFailedCommand}" />
+                </StackPanel>
+            </StackPanel>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Margin="10" BorderBrush="{utils:BrushByName Name=Accent}" BorderThickness="2" Background="{utils:BrushByName Name=ChromeMediumLow}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <StackPanel Grid.Row="0" Orientation="Vertical">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Label Margin="10" VerticalAlignment="Center">Source:</Label>
+                                <ComboBox IsEnabled="{Binding SourceStorageProviderProxy.Disconnected}" Name="SourceConnectionsCombo" Margin="10" VerticalAlignment="Center" ItemsSource="{Binding SourceStorageProviderProxy.ConnectionsAvailable}" SelectedItem="{Binding SourceStorageProviderProxy.SelectedConnection}" Width="150">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Name}" />
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <Button Margin="10" Width="150" HorizontalContentAlignment="Center" VerticalAlignment="Center" Command="{Binding SourceConnectCommand}" IsEnabled="{Binding SourceStorageProviderProxy.NoActiveConnection}" Content="{Binding SourceStorageProviderProxy.Connected, Mode=OneWay, Converter={StaticResource BoolToConnectText}}"/>
+                            </StackPanel>
+                            <TextBox Margin="5,0,5,10" IsReadOnly="True" IsEnabled="{Binding SourceStorageProviderProxy.Connected}" Text="{Binding SourceStorageProviderProxy.CurrentPath}"/>
+                        </StackPanel>
+                        <Grid Grid.Row="1" Name="SourceGrid">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <ScrollViewer Margin="5" Grid.Column="0">
+                                <ItemsControl ItemsSource="{Binding SourceStorageProviderProxy.Paths}" >
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="Transparent" PointerPressed="SourcePath_PointerPressed" DoubleTapped="SourcePath_DoubleTapped">
+                                                <TextBlock Background="{Binding Selected, Mode=OneWay, Converter={StaticResource BoolToBrush}}" FontSize="16" Text="{Binding Name}">
+                                                    <TextBlock.Styles>
+                                                        <Style Selector="TextBlock:pointerover">
+                                                            <Setter Property="Background" Value="{utils:BrushByName Name=Accent}"/>
+                                                        </Style>
+                                                    </TextBlock.Styles>
+                                                </TextBlock>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                            <ScrollViewer Margin="5" Grid.Column="1">
+                                <ScrollViewer.ContextMenu>
+                                    <ContextMenu x:Name="SourceContextMenu">
+                                        <MenuItem IsEnabled="{Binding SourceFileContextPermissions.CanCopyToTarget}" Header="Copy to Dest" Command="{Binding SourceCopyCommand}" />
+                                        <MenuItem IsEnabled="{Binding SourceFileContextPermissions.CanCreateFolder}" Header="Create Folder" Command="{Binding SourceCreateFolderCommand}"/>
+                                        <MenuItem IsEnabled="{Binding SourceFileContextPermissions.CanRename}" Header="Rename" Command="{Binding SourceRenameCommand}" />
+                                        <MenuItem IsEnabled="{Binding SourceFileContextPermissions.CanDelete}" Header="Delete" Command="{Binding SourceDeleteCommand}" />
+                                    </ContextMenu>
+                                </ScrollViewer.ContextMenu>
+                                <ItemsControl ItemsSource="{Binding SourceStorageProviderProxy.Files}" >
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="Transparent" PointerPressed="SourceFile_PointerPressed" DoubleTapped="SourceFile_DoubleTapped">
+                                                <TextBlock Background="{Binding Selected, Mode=OneWay, Converter={StaticResource BoolToBrush}}">
+                                                    <TextBlock.Styles>
+                                                        <Style Selector="TextBlock:pointerover">
+                                                            <Setter Property="Background" Value="{utils:BrushByName Name=Accent}"/>
+                                                        </Style>
+                                                    </TextBlock.Styles>
+                                                    <TextBlock.Inlines>
+                                                        <Run FontSize="16" FontFamily="{StaticResource FontAwesome}" Text="{Binding IsDirectory, Mode=OneWay, Converter={StaticResource BoolToFileIcon}}" />
+                                                        <Run FontSize="16" Text=" " />
+                                                        <Run FontSize="16" Text="{Binding Name}" />
+                                                    </TextBlock.Inlines>
+                                                </TextBlock>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Grid>
+                    </Grid>
+                </Border>
+                <Border Grid.Column="1" Margin="10" BorderBrush="{utils:BrushByName Name=Accent}" BorderThickness="2" Background="{utils:BrushByName Name=ChromeMediumLow}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+                        <StackPanel Grid.Row="0" Orientation="Vertical">
+                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                <Label Margin="10" VerticalAlignment="Center">Dest:</Label>
+                                <ComboBox IsEnabled="{Binding DestStorageProviderProxy.Disconnected}" Name="DestConnectionsCombo" Margin="10" VerticalAlignment="Center" ItemsSource="{Binding DestStorageProviderProxy.ConnectionsAvailable}" SelectedItem="{Binding DestStorageProviderProxy.SelectedConnection}" Width="150">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Name}"/>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <Button Margin="10" Width="150" HorizontalContentAlignment="Center" VerticalAlignment="Center" Command="{Binding DestConnectCommand}" IsEnabled="{Binding DestStorageProviderProxy.NoActiveConnection}" Content="{Binding DestStorageProviderProxy.Connected, Mode=OneWay, Converter={StaticResource BoolToConnectText}}"/>
+                            </StackPanel>
+                            <TextBox Margin="5,0,5,10" IsReadOnly="True" IsEnabled="{Binding DestStorageProviderProxy.Connected}" Text="{Binding DestStorageProviderProxy.CurrentPath}"/>
+                        </StackPanel>
+                        <Grid Grid.Row="1" Name="DestGrid">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <ScrollViewer Margin="5" Grid.Column="0">
+                                <ItemsControl ItemsSource="{Binding DestStorageProviderProxy.Paths}" >
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="Transparent"  PointerPressed="DestPath_PointerPressed" DoubleTapped="DestPath_DoubleTapped">
+                                                <TextBlock Background="{Binding Selected, Mode=OneWay, Converter={StaticResource BoolToBrush}}" FontSize="16" Text="{Binding Name}">
+                                                    <TextBlock.Styles>
+                                                        <Style Selector="TextBlock:pointerover">
+                                                            <Setter Property="Background" Value="{utils:BrushByName Name=Accent}"/>
+                                                        </Style>
+                                                    </TextBlock.Styles>
+                                                </TextBlock>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                            <ScrollViewer Margin="5" Grid.Column="1">
+                                <ScrollViewer.ContextMenu>
+                                    <ContextMenu x:Name="DestContextMenu">
+                                        <MenuItem IsEnabled="{Binding DestFileContextPermissions.CanCopyToTarget}" Header="Copy to Source" Command="{Binding DestCopyCommand}" />
+                                        <MenuItem IsEnabled="{Binding DestFileContextPermissions.CanCreateFolder}" Header="Create Folder" Command="{Binding DestCreateFolderCommand}"/>
+                                        <MenuItem IsEnabled="{Binding DestFileContextPermissions.CanRename}" Header="Rename" Command="{Binding DestRenameCommand}" />
+                                        <MenuItem IsEnabled="{Binding DestFileContextPermissions.CanDelete}" Header="Delete" Command="{Binding DestDeleteCommand}" />
+                                    </ContextMenu>
+                                </ScrollViewer.ContextMenu>
+                                <ItemsControl ItemsSource="{Binding DestStorageProviderProxy.Files}" >
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="Transparent" PointerPressed="DestFile_PointerPressed" DoubleTapped="DestFile_DoubleTapped">
+                                                <TextBlock Background="{Binding Selected, Mode=OneWay, Converter={StaticResource BoolToBrush}}">
+                                                    <TextBlock.Inlines>
+                                                        <Run FontSize="16" FontFamily="{StaticResource FontAwesome}" Text="{Binding IsDirectory, Mode=OneWay, Converter={StaticResource BoolToFileIcon}}" />
+                                                        <Run FontSize="16" Text=" " />
+                                                        <Run FontSize="16" Text="{Binding Name}" />
+                                                    </TextBlock.Inlines>
+                                                </TextBlock>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Grid>
+                    </Grid>
+                </Border>
+            </Grid>
+        </DockPanel>
+
+        <!-- Splash Screen -->
+        <Grid x:Name="SplashView" Opacity="1">
+            <Image Source="/Assets/teamresurgent.jpg" Stretch="Uniform" VerticalAlignment="Center" HorizontalAlignment="Center" Width="600" Height="600" />
+        </Grid>
+    </Grid>
+</Window>

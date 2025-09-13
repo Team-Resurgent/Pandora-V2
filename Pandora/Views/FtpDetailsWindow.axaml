@@ -1,0 +1,40 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Pandora.ViewModels" 
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:views="clr-namespace:Pandora.Views" 
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        Width="800" Height="450"
+        x:Class="Pandora.FtpDetailsWindow"
+        x:DataType="vm:FtpDetailsWindowViewModel"
+        Icon="/Assets/icon.png"
+        Title="Pandora - Manage FTP Servers">
+
+    <Design.DataContext>
+        <!-- This only sets the DataContext for the previewer in an IDE,
+             to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
+        <vm:FtpDetailsWindowViewModel/>
+    </Design.DataContext>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <DataGrid Grid.Row="0" x:Name="FtpDetailsGrid" Margin="10" ItemsSource="{Binding FtpDetailsList}" CellEditEnding="FtpDetailsListCellEditEnding" IsReadOnly="False" CanUserReorderColumns="True" CanUserResizeColumns="True" CanUserSortColumns="True" GridLinesVisibility="All" BorderThickness="2" BorderBrush="Green">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Name" Binding="{Binding Name}" />
+                <DataGridTextColumn Header="Host" Binding="{Binding Host}" />
+                <DataGridTextColumn Header="Port" Binding="{Binding Port}" />
+                <DataGridTextColumn Header="User" Binding="{Binding User}" />
+                <DataGridTextColumn Header="Password" Binding="{Binding Password}" />
+            </DataGrid.Columns>
+        </DataGrid>
+        <StackPanel Grid.Row="1" Margin="10" Orientation="Horizontal">
+            <Button Content="Add" Command="{Binding AddCommand}"></Button>
+            <Button Content="Delete" Command="{Binding DeleteCommand}"></Button>
+            <Button Content="Close" Command="{Binding ExitCommand}"></Button>
+        </StackPanel>
+    </Grid>
+</Window>

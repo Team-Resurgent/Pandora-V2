@@ -1,0 +1,21 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:Pandora.ViewModels"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
+        Width="800" Height="450"
+        x:Class="Pandora.InputDialogWindow"
+        x:DataType="vm:InputDialogWindowViewModel"
+        WindowStartupLocation="CenterOwner"
+        Icon="/Assets/icon.png"
+        Title="Pandora - Input Request">
+    <StackPanel Margin="10" Spacing="10">
+        <TextBlock Text="{Binding Prompt}" />
+        <TextBox Text="{Binding Input, Mode=TwoWay}" />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" Spacing="5">
+            <Button Content="OK" Command="{Binding OkCommand}" />
+            <Button Content="Cancel" Command="{Binding CancelCommand}" />
+        </StackPanel>
+    </StackPanel>
+</Window>
