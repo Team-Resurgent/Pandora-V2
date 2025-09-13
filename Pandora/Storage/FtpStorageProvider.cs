@@ -1,5 +1,4 @@
-﻿using Avalonia.Controls;
-using FluentFTP;
+﻿using FluentFTP;
 using Pandora.Logging;
 using Pandora.Models;
 using Pandora.Utils;

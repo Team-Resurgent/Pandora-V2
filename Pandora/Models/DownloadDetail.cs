@@ -1,6 +1,4 @@
-﻿using FluentFTP.Helpers;
-using ReactiveUI;
-using System.ComponentModel;
+﻿using ReactiveUI;
 using System.Threading;
 
 namespace Pandora.Models

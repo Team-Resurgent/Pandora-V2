@@ -1,12 +1,9 @@
 ﻿using Avalonia.Threading;
 using Pandora.Models;
 using Pandora.Storage;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
-using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -36,7 +33,9 @@ namespace Pandora.Utils
             {
                 foreach (var item in e.NewItems)
                 {
-                    _queue.Enqueue((DownloadDetail)item);
+                    var downloadDetail = (DownloadDetail)item;
+                    System.Diagnostics.Debug.Print($"Enquing: {downloadDetail.SourcePath}");
+                    _queue.Enqueue(downloadDetail);
                 }
             }
 
@@ -45,6 +44,7 @@ namespace Pandora.Utils
                 foreach (var item in e.OldItems)
                 {
                     var downloadDetail = (DownloadDetail)item;
+                    System.Diagnostics.Debug.Print($"Cancelling: {downloadDetail.SourcePath}");
                     downloadDetail.CancellationTokenSource.Cancel();
                     _canceledItems[downloadDetail] = true;
                 }

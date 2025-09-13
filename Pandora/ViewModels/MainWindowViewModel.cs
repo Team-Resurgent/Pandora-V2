@@ -1,22 +1,17 @@
 ﻿using Avalonia.Controls;
 using Avalonia.Threading;
 using DynamicData;
-using FluentFTP.Helpers;
 using Pandora.Logging;
 using Pandora.Models;
-using Pandora.State;
+using Pandora.Permissions;
 using Pandora.Storage;
 using Pandora.Utils;
 using ReactiveUI;
 using System;
-using System.Collections;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 
@@ -635,7 +630,10 @@ namespace Pandora.ViewModels
 
             ClearQueueCommand = ReactiveCommand.Create(() =>
             {
-                //stop any downloading
+                foreach (var item in DownloadDetails)
+                {
+                    item.CancellationTokenSource.Cancel();
+                }
                 DownloadDetails.Clear();
             });
 

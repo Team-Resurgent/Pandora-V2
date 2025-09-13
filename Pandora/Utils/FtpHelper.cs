@@ -25,7 +25,6 @@ namespace Pandora.Utils
                     Host = ftpDetails.Host,
                     Port = ftpDetails.Port,
                 };
-                _ftpClient.Config.StaleDataCheck = false;
 
                 try
                 {

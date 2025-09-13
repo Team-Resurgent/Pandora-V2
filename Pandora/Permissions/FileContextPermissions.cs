@@ -1,6 +1,6 @@
 ﻿using ReactiveUI;
 
-namespace Pandora.State
+namespace Pandora.Permissions
 {
     public class FileContextPermissions : ReactiveObject
     {
