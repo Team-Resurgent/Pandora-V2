@@ -28,12 +28,6 @@
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
             <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
         </Content>
-        <Content Include="bass.dll">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </Content>
-        <Content Include="libbass.dylib">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </Content>
         <Content Include="libbass.so" Condition="'$(RuntimeIdentifier)' == 'linux-x64'">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
             <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
@@ -41,9 +35,6 @@
         <Content Include="libbass.dylib" Condition="'$(RuntimeIdentifier)' == 'osx-x64'">
             <CopyToOutputDirectory>Always</CopyToOutputDirectory>
             <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
-        </Content>
-        <Content Include="libbass.so">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
         </Content>
     </ItemGroup>
 
