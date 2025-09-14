@@ -489,7 +489,6 @@ namespace Pandora.ViewModels
                     var destFolder = fileItem.Path.Substring(fromPath.Length);
                     var downloadDetail = new DownloadDetail
                     {
-                        Transferring = false,
                         Progress = "Pending",
                         FileSize = fileItem.Size,
                         SourceConnection = SourceStorageProviderProxy.SelectedConnection,
@@ -660,7 +659,6 @@ namespace Pandora.ViewModels
                     var destFolder = fileItem.Path.Substring(fromPath.Length);
                     var downloadDetail = new DownloadDetail
                     {
-                        Transferring = false,
                         Completed = false,
                         Progress = "Pending",
                         FileSize = fileItem.Size,
@@ -715,7 +713,6 @@ namespace Pandora.ViewModels
                         continue;
                     }
                     item.Progress = "Pending";
-                    item.Transferring = false;
                     item.Completed = false;
                     item.Failed = false;
                 }

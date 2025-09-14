@@ -5,13 +5,6 @@ namespace Pandora.Models
 {
     public class DownloadDetail : ReactiveObject
     {
-        private bool _transferring;
-        public bool Transferring
-        {
-            get => _transferring;
-            set => this.RaiseAndSetIfChanged(ref _transferring, value);
-        }
-
         private bool _completed;
         public bool Completed
         {

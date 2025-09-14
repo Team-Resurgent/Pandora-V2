@@ -73,7 +73,6 @@ namespace Pandora.Utils
                     {
                         Dispatcher.UIThread.Invoke(() =>
                         {
-                            item.Transferring = false;
                             item.Completed = true;
                             item.Progress = "Cancelled";
                         });
@@ -84,7 +83,6 @@ namespace Pandora.Utils
                     {
                         Dispatcher.UIThread.Invoke(() =>
                         {
-                            item.Transferring = false;
                             item.Completed = true;
                             item.Progress = "Invalid";
                         });
@@ -96,7 +94,6 @@ namespace Pandora.Utils
                         _connectionManager.CreateFolder(item.DestConnection, item.DestPath);
                         Dispatcher.UIThread.Invoke(() =>
                         {
-                            item.Transferring = false;
                             item.Completed = true;
                             item.Progress = "Done";
                         });
@@ -136,10 +133,14 @@ namespace Pandora.Utils
                             {
                                 Dispatcher.UIThread.Invoke(() =>
                                 {
-                                    item.Transferring = false;
                                     item.Completed = true;
                                     item.Progress = "Done";
                                 });
+                                continue;
+                            }
+
+                            if (item.CancellationTokenSource.Token.IsCancellationRequested)
+                            {
                                 continue;
                             }
                         }
@@ -147,7 +148,6 @@ namespace Pandora.Utils
                         _queue.Enqueue(item);
                         Dispatcher.UIThread.Invoke(() =>
                         {
-                            item.Transferring = false;
                             item.Failed = true;
                             item.Progress = $"Failed";
                         });
