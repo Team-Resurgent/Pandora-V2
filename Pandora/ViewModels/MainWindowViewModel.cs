@@ -36,6 +36,8 @@ namespace Pandora.ViewModels
 
         public ICommand SourceCopyCommand { get; }
 
+        public ICommand SourceRefreshCommand { get; }
+
         public ICommand DestConnectCommand { get; }
 
         public ICommand DestCreateFolderCommand { get; }
@@ -45,6 +47,8 @@ namespace Pandora.ViewModels
         public ICommand DestDeleteCommand { get; }
 
         public ICommand DestCopyCommand { get; }
+
+        public ICommand DestRefreshCommand { get; }
 
         public ICommand ClearQueueCommand { get; }
 
@@ -133,6 +137,7 @@ namespace Pandora.ViewModels
             SourceFileContextPermissions.CanRename = isWritableFrom && isFileOrDir;
             SourceFileContextPermissions.CanDelete = isWritableFrom && isFileOrDir;
             SourceFileContextPermissions.CanCopyToTarget = isWritableTarget && isFileOrDir;
+            SourceFileContextPermissions.CanRefresh = true;
         }
 
         public void OnDestPathDoubleClicked(Control sender, RootItemInfo item)
@@ -203,6 +208,7 @@ namespace Pandora.ViewModels
             DestFileContextPermissions.CanRename = isWritableFrom && isFileOrDir;
             DestFileContextPermissions.CanDelete = isWritableFrom && isFileOrDir;
             DestFileContextPermissions.CanCopyToTarget = isWritableTarget && isFileOrDir;
+            DestFileContextPermissions.CanRefresh = true;
         }
 
         public async Task ConnectInternal(StorageProviderProxy storageProviderProxy)
@@ -302,7 +308,22 @@ namespace Pandora.ViewModels
             var connectionManager = new ConnectionManager(logDetailLogger);
 
             SourceStorageProviderProxy = new StorageProviderProxy(logDetailLogger, sourceConnections, connectionManager);
+            SourceStorageProviderProxy.OnConnectionChanged += () => {
+                foreach (var item in DownloadDetails)
+                {
+                    item.CancellationTokenSource.Cancel();
+                }
+                DownloadDetails.Clear();
+            };
+
             DestStorageProviderProxy = new StorageProviderProxy(logDetailLogger, destConnections, connectionManager);
+            DestStorageProviderProxy.OnConnectionChanged += () => {
+                foreach (var item in DownloadDetails)
+                {
+                    item.CancellationTokenSource.Cancel();
+                }
+                DownloadDetails.Clear();
+            };
 
             ExitCommand = ReactiveCommand.Create(() =>
             {
@@ -481,6 +502,18 @@ namespace Pandora.ViewModels
                 }
             });
 
+            SourceRefreshCommand = ReactiveCommand.Create(() =>
+            {
+                if (!SourceStorageProviderProxy.TryGetFileItems(SourceStorageProviderProxy.SelectedConnection, SourceStorageProviderProxy.CurrentPath, out var fileItems))
+                {
+                    Disconnect(SourceStorageProviderProxy);
+                    return;
+                }
+
+                SourceStorageProviderProxy.Files.Clear();
+                SourceStorageProviderProxy.Files.AddRange(fileItems);
+            });
+
             DestConnectCommand = ReactiveCommand.Create(async () =>
             {
                 if (Owner == null)
@@ -641,6 +674,18 @@ namespace Pandora.ViewModels
                 }
             });
 
+            DestRefreshCommand = ReactiveCommand.Create(() =>
+            {
+                if (!DestStorageProviderProxy.TryGetFileItems(DestStorageProviderProxy.SelectedConnection, DestStorageProviderProxy.CurrentPath, out var fileItems))
+                {
+                    Disconnect(DestStorageProviderProxy);
+                    return;
+                }
+
+                DestStorageProviderProxy.Files.Clear();
+                DestStorageProviderProxy.Files.AddRange(fileItems);
+            });
+
             ClearQueueCommand = ReactiveCommand.Create(() =>
             {
                 foreach (var item in DownloadDetails)
@@ -676,11 +721,9 @@ namespace Pandora.ViewModels
                 }
             });
 
-
-
             DownloadQueueProcessor = new DownloadQueueProcessor(logDetailLogger, DownloadDetails, connectionManager);
             DownloadQueueProcessor.Start();
-            DownloadQueueProcessor.Paused = true;
+            //DownloadQueueProcessor.Paused = true;
 
             UnpauseCommand = ReactiveCommand.Create(() =>
             {

@@ -20,6 +20,8 @@ namespace Pandora.Storage
 
         private ConnectionManager _connectionManager;
 
+        public event Action? OnConnectionChanged;
+
         private IConnection _selectedConnection;
         public IConnection SelectedConnection
         {
@@ -27,6 +29,7 @@ namespace Pandora.Storage
             set {
                 CurrentPath = string.Empty;
                 this.RaiseAndSetIfChanged(ref _selectedConnection, value);
+                OnConnectionChanged?.Invoke();
             }
         }
 

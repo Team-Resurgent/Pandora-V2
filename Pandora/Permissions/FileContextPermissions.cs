@@ -32,12 +32,20 @@ namespace Pandora.Permissions
             set => this.RaiseAndSetIfChanged(ref _canCopyToTarget, value);
         }
 
+        private bool _canRefresh;
+        public bool CanRefresh
+        {
+            get => _canRefresh;
+            set => this.RaiseAndSetIfChanged(ref _canRefresh, value);
+        }
+
         public void ClearPermissions()
         {
             CanCreateFolder = false;
             CanRename = false;
             CanDelete = false;
             CanCopyToTarget = false;
+            CanRefresh = false;
         }
     }
 }

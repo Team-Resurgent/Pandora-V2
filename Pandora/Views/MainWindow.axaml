@@ -36,7 +36,7 @@
     </Design.DataContext>
 
     <Grid>
-        <DockPanel x:Name="MainContent" LastChildFill="True">
+        <DockPanel Opacity="0" x:Name="MainContent" LastChildFill="True">
             <StackPanel DockPanel.Dock="Top" Orientation="Vertical">
                 <Menu>
                     <MenuItem Header="_File">
@@ -65,7 +65,7 @@
                     <Button Content="Clear Queue" Command="{Binding ClearQueueCommand}" />
                     <Button Content="Clear Completed" Command="{Binding ClearCompletedCommand}" />
                     <Button Content="Retry Failed" Command="{Binding RetryFailedCommand}" />
-                    <Button Content="Unpause" Command="{Binding UnpauseCommand}" />
+                    <Button IsVisible="False" Content="Unpause" Command="{Binding UnpauseCommand}" />
                 </StackPanel>
             </StackPanel>
             <Grid>
@@ -122,6 +122,7 @@
                                         <MenuItem IsEnabled="{Binding SourceFileContextPermissions.CanCreateFolder}" Header="Create Folder" Command="{Binding SourceCreateFolderCommand}"/>
                                         <MenuItem IsEnabled="{Binding SourceFileContextPermissions.CanRename}" Header="Rename" Command="{Binding SourceRenameCommand}" />
                                         <MenuItem IsEnabled="{Binding SourceFileContextPermissions.CanDelete}" Header="Delete" Command="{Binding SourceDeleteCommand}" />
+                                        <MenuItem IsEnabled="{Binding SourceFileContextPermissions.CanRefresh}" Header="Refresh" Command="{Binding SourceRefreshCommand}" />
                                     </ContextMenu>
                                 </ScrollViewer.ContextMenu>
                                 <ItemsControl ItemsSource="{Binding SourceStorageProviderProxy.Files}" >
@@ -197,6 +198,7 @@
                                         <MenuItem IsEnabled="{Binding DestFileContextPermissions.CanCreateFolder}" Header="Create Folder" Command="{Binding DestCreateFolderCommand}"/>
                                         <MenuItem IsEnabled="{Binding DestFileContextPermissions.CanRename}" Header="Rename" Command="{Binding DestRenameCommand}" />
                                         <MenuItem IsEnabled="{Binding DestFileContextPermissions.CanDelete}" Header="Delete" Command="{Binding DestDeleteCommand}" />
+                                        <MenuItem IsEnabled="{Binding DestFileContextPermissions.CanRefresh}" Header="Refresh" Command="{Binding DestRefreshCommand}" />
                                     </ContextMenu>
                                 </ScrollViewer.ContextMenu>
                                 <ItemsControl ItemsSource="{Binding DestStorageProviderProxy.Files}" >

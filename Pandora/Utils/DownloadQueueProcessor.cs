@@ -67,28 +67,39 @@ namespace Pandora.Utils
         {
             while (!token.IsCancellationRequested)
             {
-                if (!Paused && _queue.TryPeek(out var item))
+                if (!Paused && _queue.TryDequeue(out var item))
                 {
-                    if (item == null || item.Completed == true || item.Failed == true)
-                    {
-                        continue;
-                    }
-
                     if (_canceledItems.TryRemove(item, out _))
                     {
+                        Dispatcher.UIThread.Invoke(() =>
+                        {
+                            item.Transferring = false;
+                            item.Completed = true;
+                            item.Progress = "Cancelled";
+                        });
                         continue;
                     }
 
                     if (item.DestConnection == null || item.SourceConnection == null)
                     {
-                        _queue.TryDequeue(out _);
+                        Dispatcher.UIThread.Invoke(() =>
+                        {
+                            item.Transferring = false;
+                            item.Completed = true;
+                            item.Progress = "Invalid";
+                        });
                         continue;
                     }
 
                     if (item.IsDirectory)
                     {
-
                         _connectionManager.CreateFolder(item.DestConnection, item.DestPath);
+                        Dispatcher.UIThread.Invoke(() =>
+                        {
+                            item.Transferring = false;
+                            item.Completed = true;
+                            item.Progress = "Done";
+                        });
                     }
                     else
                     {
@@ -105,35 +116,41 @@ namespace Pandora.Utils
                             {
                                 _connectionManager.Connect(item.DestConnection);
                             }
+                            _queue.Enqueue(item);
+                            Dispatcher.UIThread.Invoke(() =>
+                            {
+                                item.Progress = $"Reconnecting";
+                            });
                             continue;
                         }
 
                         if (fromStream != null && targetStream != null)
                         {
-                            FileSystemHelper.CopyStreamWithProgress(item.CancellationTokenSource.Token, fromStream, targetStream, 0, (p) =>
+                            if (FileSystemHelper.CopyStreamWithProgress(item.CancellationTokenSource.Token, fromStream, targetStream, 0, (p) =>
                             {
                                 Dispatcher.UIThread.Invoke(() =>
                                 {
                                     item.Progress = $"{p:P}";
                                 });
-                            });
-                            Dispatcher.UIThread.Invoke(() =>
+                            }))
                             {
-                                item.Transferring = false;
-                                item.Completed = true;
-                                item.Progress = "Done";
-                            });
-                            _queue.TryDequeue(out _);
+                                Dispatcher.UIThread.Invoke(() =>
+                                {
+                                    item.Transferring = false;
+                                    item.Completed = true;
+                                    item.Progress = "Done";
+                                });
+                                continue;
+                            }
                         }
-                        else
+        
+                        _queue.Enqueue(item);
+                        Dispatcher.UIThread.Invoke(() =>
                         {
-                            Dispatcher.UIThread.Invoke(() =>
-                            {
-                                item.Transferring = false;
-                                item.Failed = true;
-                                item.Progress = $"Failed";
-                            });
-                        }
+                            item.Transferring = false;
+                            item.Failed = true;
+                            item.Progress = $"Failed";
+                        });
                     }
                 }
                 else
