@@ -1,4 +1,5 @@
 ﻿using Avalonia.Threading;
+using Pandora.Logging;
 using Pandora.Models;
 using Pandora.Storage;
 using System.Collections.Concurrent;
@@ -11,20 +12,21 @@ namespace Pandora.Utils
 {
     public class DownloadQueueProcessor
     {
-
+        private readonly ILogger _logger;
         private readonly ConcurrentQueue<DownloadDetail> _queue = new();
         private readonly ObservableCollection<DownloadDetail> _observableCollection;
         private readonly ConcurrentDictionary<DownloadDetail, bool> _canceledItems = new();
         private readonly CancellationTokenSource _cts = new();
-        private readonly StorageProviderProxy _sourceStorageProviderProxy;
-        private readonly StorageProviderProxy _destStorageProviderProxy;
+        private readonly ConnectionManager _connectionManager;
 
-        public DownloadQueueProcessor(StorageProviderProxy sourceStorageProviderProxy, StorageProviderProxy destStorageProviderProxy, ObservableCollection<DownloadDetail> observableCollection)
+        public bool Paused { get; set; }
+
+        public DownloadQueueProcessor(ILogger logger, ObservableCollection<DownloadDetail> observableCollection, ConnectionManager connectionManager)
         {
+            _logger = logger;
             _observableCollection = observableCollection;
             _observableCollection.CollectionChanged += OnCollectionChanged;
-            _sourceStorageProviderProxy = sourceStorageProviderProxy;
-            _destStorageProviderProxy = destStorageProviderProxy;
+            _connectionManager = connectionManager;
         }
 
         private void OnCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -65,22 +67,47 @@ namespace Pandora.Utils
         {
             while (!token.IsCancellationRequested)
             {
-                if (_queue.TryDequeue(out var item))
+                if (!Paused && _queue.TryPeek(out var item))
                 {
+                    if (item == null || item.Completed == true || item.Failed == true)
+                    {
+                        continue;
+                    }
+
                     if (_canceledItems.TryRemove(item, out _))
                     {
                         continue;
                     }
 
+                    if (item.DestConnection == null || item.SourceConnection == null)
+                    {
+                        _queue.TryDequeue(out _);
+                        continue;
+                    }
+
                     if (item.IsDirectory)
                     {
-                        // fixme
-                        _destStorageProviderProxy.CreateFolder(item.DestPath);
+
+                        _connectionManager.CreateFolder(item.DestConnection, item.DestPath);
                     }
                     else
                     {
-                        using var fromStream = _sourceStorageProviderProxy.OpenReadStream(item.SourcePath, item.FileSize);
-                        using var targetStream = _destStorageProviderProxy.OpenWriteStream(item.DestPath, item.FileSize);
+                        using var fromStream = _connectionManager.OpenReadStream(item.SourceConnection, item.SourcePath, item.FileSize);
+                        using var targetStream = _connectionManager.OpenWriteStream(item.DestConnection, item.DestPath, item.FileSize);
+
+                        if (fromStream == null || targetStream == null)
+                        {
+                            if (fromStream == null && item.SourceConnection != null)
+                            {
+                                _connectionManager.Connect(item.SourceConnection);
+                            }
+                            if (targetStream == null && item.DestConnection != null)
+                            {
+                                _connectionManager.Connect(item.DestConnection);
+                            }
+                            continue;
+                        }
+
                         if (fromStream != null && targetStream != null)
                         {
                             FileSystemHelper.CopyStreamWithProgress(item.CancellationTokenSource.Token, fromStream, targetStream, 0, (p) =>
@@ -90,11 +117,13 @@ namespace Pandora.Utils
                                     item.Progress = $"{p:P}";
                                 });
                             });
-                            Dispatcher.UIThread.Invoke(() => {
+                            Dispatcher.UIThread.Invoke(() =>
+                            {
                                 item.Transferring = false;
                                 item.Completed = true;
                                 item.Progress = "Done";
                             });
+                            _queue.TryDequeue(out _);
                         }
                         else
                         {
@@ -109,7 +138,7 @@ namespace Pandora.Utils
                 }
                 else
                 {
-                    await Task.Delay(100); // nothing to process
+                    await Task.Delay(100);
                 }
             }
         }

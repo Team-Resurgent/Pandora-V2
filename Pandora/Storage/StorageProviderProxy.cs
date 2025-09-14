@@ -1,7 +1,10 @@
 ﻿using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
+using Avalonia.Platform.Storage;
 using Pandora.Logging;
 using Pandora.Models;
 using Pandora.Utils;
+using Pandora.ViewModels;
 using ReactiveUI;
 using System;
 using System.Collections.Generic;
@@ -13,10 +16,9 @@ namespace Pandora.Storage
 {
     public class StorageProviderProxy : ReactiveObject
     {
-        private IStorageProvider? _storageProvider;
-        private ILogger _logger;
-
         public ObservableCollection<IConnection> ConnectionsAvailable { get; }
+
+        private ConnectionManager _connectionManager;
 
         private IConnection _selectedConnection;
         public IConnection SelectedConnection
@@ -27,7 +29,6 @@ namespace Pandora.Storage
                 this.RaiseAndSetIfChanged(ref _selectedConnection, value);
             }
         }
-
 
         private string _currentPath;
 
@@ -49,72 +50,57 @@ namespace Pandora.Storage
 
         public ObservableCollection<FileItemInfo> Files { get; } = [];
 
-        public StorageProviderProxy(ILogger logger, ObservableCollection<IConnection> connectionsAvailable)
+        public StorageProviderProxy(ILogger logger, ObservableCollection<IConnection> connectionsAvailable, ConnectionManager connectionManager)
         {
-            _storageProvider = null;
-            _logger = logger;
             _selectedConnection = connectionsAvailable[0];
             _currentPath = string.Empty;
 
+            _connectionManager = connectionManager;
             ConnectionsAvailable = connectionsAvailable;
             NoActiveConnection = true;
             Connected = false;
             Disconnected = true;
         }
 
-        public async Task ConnectAsync(IConnection connection, Window owner, Action<bool> onComplete)
+        public bool Connect()
         {
             Disconnect();
 
             NoActiveConnection = false;
 
-            await Task.Run(async () =>
+            var connected = _connectionManager.Connect(_selectedConnection);
+
+            NoActiveConnection = true;
+            Connected = connected;
+            Disconnected = !connected;
+            return connected;
+        }
+
+        public async Task ConnectAsync(Action<bool> onComplete)
+        {
+            Disconnect();
+
+            NoActiveConnection = false;
+
+            await Task.Run(() =>
             {
-                IStorageProvider? storageProvider = null;
-
-                if (connection.ConnectionType == ConnectionType.Local)
-                {
-                    storageProvider = new LocalStorageProvider(_logger);
-                }
-                else if (connection.ConnectionType == ConnectionType.FTP)
-                {
-                    var ftpConnection = connection as ConnectionFTP;
-                    storageProvider = new FtpStorageProvider(_logger) { FtpDetails = ftpConnection?.FtpDetails };
-                }
-                else if (connection.ConnectionType == ConnectionType.XBINS)
-                {
-                    storageProvider = new XbinsStorageProvider(_logger);
-                }
-
-                if (storageProvider != null)
-                {
-                    if (await storageProvider.ConnectAsync())
-                    {
-                        _storageProvider = storageProvider;
-                    }
-                }
+                var connected = _connectionManager.Connect(_selectedConnection);
 
                 NoActiveConnection = true;
-                Connected = _storageProvider != null;
-                Disconnected = !Connected;
+                Connected = connected;
+                Disconnected = !connected;
 
-                onComplete(Connected);
+                onComplete(connected);
             });
         }
 
-        public bool IsReadOnly => _storageProvider?.IsReadOnly ?? true;
+        public bool IsReadOnly => _connectionManager.GetStorageProvider(_selectedConnection)?.IsReadOnly ?? true;
 
-        public Protocol Protocol => _storageProvider?.Protocol ?? Protocol.Undefined;
+        public Protocol Protocol => _connectionManager.GetStorageProvider(_selectedConnection)?.Protocol ?? Protocol.Undefined;
 
         public void Disconnect()
         {
-            if (_storageProvider == null)
-            {
-                return;
-            }
-            _storageProvider.Disconnect();
-            _storageProvider = null;
-
+            _connectionManager.Disconnect(_selectedConnection);
             NoActiveConnection = true;
             Connected = false;
             Disconnected = true;
@@ -141,36 +127,6 @@ namespace Pandora.Storage
             set => this.RaiseAndSetIfChanged(ref _disconnected, value);
         }
 
-        public bool TryGetRootItems(out IEnumerable<RootItemInfo> rootItems)
-        {
-            if (_storageProvider == null)
-            {
-                rootItems = [];
-                return false;
-            }
-            return _storageProvider.TryGetRootItems(out rootItems);
-        }
-
-        public bool TryGetFileItems(string path, out IEnumerable<FileItemInfo> fileItems)
-        {
-            if (_storageProvider == null)
-            {
-                fileItems = [];
-                return false;
-            }
-            return _storageProvider.TryGetFileItems(path, out fileItems);
-        }
-
-        public bool TryRecurseFileItems(FileItemInfo folder, out IEnumerable<FileItemInfo> fileItems)
-        {
-            if (_storageProvider == null)
-            {
-                fileItems = [];
-                return false;
-            }
-            return _storageProvider.TryRecurseFileItems(folder, out fileItems);
-        }
-
         public string CombinePath(string path, string value)
         {
             if (Protocol == Protocol.FTP)
@@ -180,49 +136,60 @@ namespace Pandora.Storage
             return FileSystemHelper.CombinePathWin(path, value);
         }
 
-        public bool CreateFolder(string path)
+
+        public IStorageProvider? GetStorageProvider(IConnection connection)
         {
-            if (_storageProvider == null)
-            {
-                return false;
-            }
-            return _storageProvider.TryCreateFolder(path);
+            return _connectionManager.GetStorageProvider(connection);
         }
 
-        public bool Delete(FileItemInfo? fileItemInfo)
+        public bool Connect(IConnection connection)
         {
-            if (_storageProvider == null)
-            {
-                return false;
-            }
-            return _storageProvider.TryDelete(fileItemInfo);
+            return _connectionManager.Connect(connection);
         }
 
-        public bool Rename(FileItemInfo? fileItemInfo, string new_name)
+        public void Disconnect(IConnection connection)
         {
-            if (_storageProvider == null)
-            {
-                return false;
-            }
-            return _storageProvider.TryRename(fileItemInfo, new_name);
+            _connectionManager.Disconnect(connection);
         }
 
-        public Stream? OpenWriteStream(string path, long fileLen)
+        public bool TryGetRootItems(IConnection connection, out IEnumerable<RootItemInfo> rootItems)
         {
-            if (_storageProvider != null)
-            {
-                return _storageProvider.OpenWriteStream(path, fileLen);
-            }
-            return null;
+            return _connectionManager.TryGetRootItems(connection, out rootItems);
         }
 
-        public Stream? OpenReadStream(string path, long fileLen)
+        public bool TryGetFileItems(IConnection connection, string path, out IEnumerable<FileItemInfo> fileItems)
         {
-            if (_storageProvider != null)
-            {
-                return _storageProvider.OpenReadStream(path, fileLen);
-            }
-            return null;
+            return _connectionManager.TryGetFileItems(connection, path, out fileItems);
+        }
+
+        public bool TryRecurseFileItems(IConnection connection, FileItemInfo folder, out IEnumerable<FileItemInfo> fileItems)
+        {
+            return _connectionManager.TryRecurseFileItems(connection, folder, out fileItems);
+        }
+
+        public bool CreateFolder(IConnection connection, string path)
+        {
+            return _connectionManager.CreateFolder(connection, path);
+        }
+
+        public bool Delete(IConnection connection, FileItemInfo? fileItemInfo)
+        {
+            return _connectionManager.Delete(connection, fileItemInfo);
+        }
+
+        public bool Rename(IConnection connection, FileItemInfo? fileItemInfo, string new_name)
+        {
+            return _connectionManager.Rename(connection, fileItemInfo, new_name);
+        }
+
+        public Stream? OpenWriteStream(IConnection connection, string path, long fileLen)
+        {
+            return _connectionManager.OpenWriteStream(connection, path, fileLen);
+        }
+
+        public Stream? OpenReadStream(IConnection connection, string path, long fileLen)
+        {
+            return _connectionManager.OpenReadStream(connection, path, fileLen);
         }
     }
 }

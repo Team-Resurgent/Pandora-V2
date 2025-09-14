@@ -11,7 +11,9 @@ namespace Pandora.Storage
 
         Protocol Protocol { get; }
 
-        Task<bool> ConnectAsync();
+        IConnection Connection { get; }
+
+        bool Connect();
 
         void Disconnect();
 

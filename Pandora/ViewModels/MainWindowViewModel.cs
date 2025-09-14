@@ -1,4 +1,5 @@
 ﻿using Avalonia.Controls;
+using Avalonia.Diagnostics;
 using Avalonia.Threading;
 using DynamicData;
 using Pandora.Logging;
@@ -51,6 +52,8 @@ namespace Pandora.ViewModels
 
         public ICommand RetryFailedCommand { get; }
 
+        public ICommand UnpauseCommand { get; }
+
         public FileContextPermissions SourceFileContextPermissions { get; } = new FileContextPermissions();
 
         public FileContextPermissions DestFileContextPermissions { get; } = new FileContextPermissions();
@@ -65,7 +68,7 @@ namespace Pandora.ViewModels
         {
             Dispatcher.UIThread.Post(() =>
             {
-                if (!SourceStorageProviderProxy.TryGetFileItems(item.Path, out var fileItems))
+                if (!SourceStorageProviderProxy.TryGetFileItems(SourceStorageProviderProxy.SelectedConnection, item.Path, out var fileItems))
                 {
                     Disconnect(SourceStorageProviderProxy);
                     return;
@@ -86,7 +89,7 @@ namespace Pandora.ViewModels
             {
                 if (item.IsDirectory)
                 {
-                    if (!SourceStorageProviderProxy.TryGetFileItems(item.Path, out var fileItems))
+                    if (!SourceStorageProviderProxy.TryGetFileItems(SourceStorageProviderProxy.SelectedConnection, item.Path, out var fileItems))
                     {
                         Disconnect(SourceStorageProviderProxy);
                         return;
@@ -136,7 +139,7 @@ namespace Pandora.ViewModels
         {
             Dispatcher.UIThread.Post(() =>
             {
-                if (!DestStorageProviderProxy.TryGetFileItems(item.Path, out var fileItems))
+                if (!DestStorageProviderProxy.TryGetFileItems(DestStorageProviderProxy.SelectedConnection, item.Path, out var fileItems))
                 {
                     Disconnect(DestStorageProviderProxy);
                     return;
@@ -157,7 +160,7 @@ namespace Pandora.ViewModels
             {
                 if (item.IsDirectory)
                 {
-                    if (!DestStorageProviderProxy.TryGetFileItems(item.Path, out var fileItems))
+                    if (!DestStorageProviderProxy.TryGetFileItems(DestStorageProviderProxy.SelectedConnection, item.Path, out var fileItems))
                     {
                         Disconnect(DestStorageProviderProxy);
                         return;
@@ -202,17 +205,13 @@ namespace Pandora.ViewModels
             DestFileContextPermissions.CanCopyToTarget = isWritableTarget && isFileOrDir;
         }
 
-        public async Task Connect(StorageProviderProxy storageProviderProxy)
+        public async Task ConnectInternal(StorageProviderProxy storageProviderProxy)
         {
-            if (Owner == null)
-            {
-                return;
-            }
-            await storageProviderProxy.ConnectAsync(storageProviderProxy.SelectedConnection, Owner, success =>
+            await storageProviderProxy.ConnectAsync(success =>
             {
                 if (success)
                 {
-                    if (!storageProviderProxy.TryGetRootItems(out var rootItems))
+                    if (!storageProviderProxy.TryGetRootItems(storageProviderProxy.SelectedConnection, out var rootItems))
                     {
                         storageProviderProxy.Disconnect();
                         return;
@@ -221,7 +220,7 @@ namespace Pandora.ViewModels
                     if (rootItems.Count() > 0)
                     {
                         var path = string.IsNullOrEmpty(storageProviderProxy.CurrentPath) ? rootItems.First().Path : storageProviderProxy.CurrentPath;
-                        if (!storageProviderProxy.TryGetFileItems(path, out var fileItems))
+                        if (!storageProviderProxy.TryGetFileItems(storageProviderProxy.SelectedConnection, path, out var fileItems))
                         {
                             storageProviderProxy.Disconnect();
                             return;
@@ -239,16 +238,32 @@ namespace Pandora.ViewModels
             });
         }
 
-        public async Task Reconnect(StorageProviderProxy storageProviderProxy)
+        public async Task Connect(StorageProviderProxy storageProviderProxy)
         {
             if (Owner == null)
             {
                 return;
             }
-            await storageProviderProxy.ConnectAsync(storageProviderProxy.SelectedConnection, Owner, success =>
+
+            if (string.IsNullOrEmpty(storageProviderProxy.CurrentPath) && storageProviderProxy.SelectedConnection is ConnectionFTP connectionFtp)
             {
-                // Do nothing
-            });
+                var ftpPickerDialogWindow = new FtpPickerDialogWindow();
+                var ftpPickerDialogWindowViewModel = new FtpPickerDialogWindowViewModel { Owner = ftpPickerDialogWindow };
+                ftpPickerDialogWindowViewModel.OnResult += async ok =>
+                {
+                    if (!ok || ftpPickerDialogWindowViewModel.SelectedFtpDetail == null)
+                    {
+                        return;
+                    }
+                    connectionFtp.FtpDetails = ftpPickerDialogWindowViewModel.SelectedFtpDetail;
+                    await ConnectInternal(storageProviderProxy);
+                };
+                ftpPickerDialogWindow.DataContext = ftpPickerDialogWindowViewModel;
+                await ftpPickerDialogWindow.ShowDialog(Owner);
+                return;
+            }
+  
+            await ConnectInternal(storageProviderProxy);
         }
 
         public void Disconnect(StorageProviderProxy storageProviderProxy)
@@ -274,24 +289,20 @@ namespace Pandora.ViewModels
             {
                 new ConnectionXBINS(),
                 new ConnectionLocal(),
+                new ConnectionFTP(),
             };
 
             var destConnections = new ObservableCollection<IConnection>
             {
                 new ConnectionLocal(),
+                new ConnectionFTP(),
             };
 
-            var config = Config.LoadConfig();
-            for (int i = 0; i < config.FtpServers.Length; i++)
-            {
-                sourceConnections.Add(new ConnectionFTP { FtpDetails = config.FtpServers[i] });
-                destConnections.Add(new ConnectionFTP { FtpDetails = config.FtpServers[i] });
-            }
-
             var logDetailLogger = new LogDetailLogger(LogDetails);
+            var connectionManager = new ConnectionManager(logDetailLogger);
 
-            SourceStorageProviderProxy = new StorageProviderProxy(logDetailLogger, sourceConnections);
-            DestStorageProviderProxy = new StorageProviderProxy(logDetailLogger, destConnections);
+            SourceStorageProviderProxy = new StorageProviderProxy(logDetailLogger, sourceConnections, connectionManager);
+            DestStorageProviderProxy = new StorageProviderProxy(logDetailLogger, destConnections, connectionManager);
 
             ExitCommand = ReactiveCommand.Create(() =>
             {
@@ -320,6 +331,7 @@ namespace Pandora.ViewModels
                     Disconnect(SourceStorageProviderProxy);
                     return;
                 }
+
                 await Connect(SourceStorageProviderProxy);
             });
 
@@ -337,9 +349,10 @@ namespace Pandora.ViewModels
                     {
                         return;
                     }
-                    if (SourceStorageProviderProxy.CreateFolder(SourceStorageProviderProxy.CombinePath(SourceStorageProviderProxy.CurrentPath, inputDialogWindowViewModel.Input)))
+
+                    if (SourceStorageProviderProxy.CreateFolder(SourceStorageProviderProxy.SelectedConnection, SourceStorageProviderProxy.CombinePath(SourceStorageProviderProxy.CurrentPath, inputDialogWindowViewModel.Input)))
                     {
-                        if (!SourceStorageProviderProxy.TryGetFileItems(SourceStorageProviderProxy.CurrentPath, out var fileItems))
+                        if (!SourceStorageProviderProxy.TryGetFileItems(SourceStorageProviderProxy.SelectedConnection, SourceStorageProviderProxy.CurrentPath, out var fileItems))
                         {
                             Disconnect(SourceStorageProviderProxy);
                             return;
@@ -369,9 +382,9 @@ namespace Pandora.ViewModels
                     {
                         return;
                     }
-                    if (SourceStorageProviderProxy.CurrentFile != null && SourceStorageProviderProxy.Rename(SourceStorageProviderProxy.CurrentFile, inputDialogWindowViewModel.Input))
+                    if (SourceStorageProviderProxy.CurrentFile != null && SourceStorageProviderProxy.Rename(SourceStorageProviderProxy.SelectedConnection, SourceStorageProviderProxy.CurrentFile, inputDialogWindowViewModel.Input))
                     {
-                        if (!SourceStorageProviderProxy.TryGetFileItems(SourceStorageProviderProxy.CurrentPath, out var fileItems))
+                        if (!SourceStorageProviderProxy.TryGetFileItems(SourceStorageProviderProxy.SelectedConnection, SourceStorageProviderProxy.CurrentPath, out var fileItems))
                         {
                             Disconnect(SourceStorageProviderProxy);
                             return;
@@ -401,9 +414,9 @@ namespace Pandora.ViewModels
                     {
                         return;
                     }
-                    if (SourceStorageProviderProxy.CurrentFile != null && SourceStorageProviderProxy.Delete(SourceStorageProviderProxy.CurrentFile))
+                    if (SourceStorageProviderProxy.CurrentFile != null && SourceStorageProviderProxy.Delete(SourceStorageProviderProxy.SelectedConnection, SourceStorageProviderProxy.CurrentFile))
                     {
-                        if (!SourceStorageProviderProxy.TryGetFileItems(SourceStorageProviderProxy.CurrentPath, out var fileItems))
+                        if (!SourceStorageProviderProxy.TryGetFileItems(SourceStorageProviderProxy.SelectedConnection, SourceStorageProviderProxy.CurrentPath, out var fileItems))
                         {
                             Disconnect(SourceStorageProviderProxy);
                             return;
@@ -438,7 +451,7 @@ namespace Pandora.ViewModels
                 var fileItems = new List<FileItemInfo>();
                 if (SourceStorageProviderProxy.CurrentFile.IsDirectory)
                 {
-                    if (!SourceStorageProviderProxy.TryRecurseFileItems(SourceStorageProviderProxy.CurrentFile, out var tempFileItems))
+                    if (!SourceStorageProviderProxy.TryRecurseFileItems(SourceStorageProviderProxy.SelectedConnection, SourceStorageProviderProxy.CurrentFile, out var tempFileItems))
                     {
                         Disconnect(SourceStorageProviderProxy);
                         return;
@@ -496,9 +509,9 @@ namespace Pandora.ViewModels
                     {
                         return;
                     }
-                    if (DestStorageProviderProxy.CreateFolder(DestStorageProviderProxy.CombinePath(DestStorageProviderProxy.CurrentPath, inputDialogWindowViewModel.Input)))
+                    if (DestStorageProviderProxy.CreateFolder(DestStorageProviderProxy.SelectedConnection, DestStorageProviderProxy.CombinePath(DestStorageProviderProxy.CurrentPath, inputDialogWindowViewModel.Input)))
                     {
-                        if (!DestStorageProviderProxy.TryGetFileItems(DestStorageProviderProxy.CurrentPath, out var fileItems))
+                        if (!DestStorageProviderProxy.TryGetFileItems(DestStorageProviderProxy.SelectedConnection, DestStorageProviderProxy.CurrentPath, out var fileItems))
                         {
                             Disconnect(DestStorageProviderProxy);
                             return;
@@ -528,9 +541,9 @@ namespace Pandora.ViewModels
                     {
                         return;
                     }
-                    if (DestStorageProviderProxy.CurrentFile != null && DestStorageProviderProxy.Rename(DestStorageProviderProxy.CurrentFile, inputDialogWindowViewModel.Input))
+                    if (DestStorageProviderProxy.CurrentFile != null && DestStorageProviderProxy.Rename(DestStorageProviderProxy.SelectedConnection, DestStorageProviderProxy.CurrentFile, inputDialogWindowViewModel.Input))
                     {
-                        if (!DestStorageProviderProxy.TryGetFileItems(DestStorageProviderProxy.CurrentPath, out var fileItems))
+                        if (!DestStorageProviderProxy.TryGetFileItems(DestStorageProviderProxy.SelectedConnection, DestStorageProviderProxy.CurrentPath, out var fileItems))
                         {
                             Disconnect(DestStorageProviderProxy);
                             return;
@@ -560,9 +573,9 @@ namespace Pandora.ViewModels
                     {
                         return;
                     }
-                    if (DestStorageProviderProxy.CurrentFile != null && DestStorageProviderProxy.Delete(DestStorageProviderProxy.CurrentFile))
+                    if (DestStorageProviderProxy.CurrentFile != null && DestStorageProviderProxy.Delete(DestStorageProviderProxy.SelectedConnection, DestStorageProviderProxy.CurrentFile))
                     {
-                        if (!DestStorageProviderProxy.TryGetFileItems(DestStorageProviderProxy.CurrentPath, out var fileItems))
+                        if (!DestStorageProviderProxy.TryGetFileItems(DestStorageProviderProxy.SelectedConnection, DestStorageProviderProxy.CurrentPath, out var fileItems))
                         {
                             Disconnect(DestStorageProviderProxy);
                             return;
@@ -597,7 +610,7 @@ namespace Pandora.ViewModels
                 var fileItems = new List<FileItemInfo>();
                 if (DestStorageProviderProxy.CurrentFile.IsDirectory)
                 {
-                    if (!DestStorageProviderProxy.TryRecurseFileItems(DestStorageProviderProxy.CurrentFile, out var tempFileItems))
+                    if (!DestStorageProviderProxy.TryRecurseFileItems(DestStorageProviderProxy.SelectedConnection, DestStorageProviderProxy.CurrentFile, out var tempFileItems))
                     {
                         Disconnect(DestStorageProviderProxy);
                         return;
@@ -663,8 +676,16 @@ namespace Pandora.ViewModels
                 }
             });
 
-            DownloadQueueProcessor = new DownloadQueueProcessor(SourceStorageProviderProxy, DestStorageProviderProxy, DownloadDetails);
+
+
+            DownloadQueueProcessor = new DownloadQueueProcessor(logDetailLogger, DownloadDetails, connectionManager);
             DownloadQueueProcessor.Start();
+            DownloadQueueProcessor.Paused = true;
+
+            UnpauseCommand = ReactiveCommand.Create(() =>
+            {
+                DownloadQueueProcessor.Paused = false;
+            });
         }
     }
 }

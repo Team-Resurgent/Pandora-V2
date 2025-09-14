@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Tmds.DBus.Protocol;
 
 namespace Pandora.Storage
 {
@@ -14,25 +15,29 @@ namespace Pandora.Storage
         private CancellationTokenSource? _cancellationToken;
 
         private ILogger _logger;
+        private IConnection _connection;
 
         private FtpHelper? _ftpHelper;
 
         public FtpDetails? FtpDetails { get; set; }
 
-        public FtpStorageProvider(ILogger logger) 
+        public FtpStorageProvider(ILogger logger, IConnection connection) 
         {
             _logger = logger;
+            _connection = connection;
         }
 
         public bool IsReadOnly => false;
 
+        public IConnection Connection => _connection;
+
         public Protocol Protocol => Protocol.FTP;
 
-        public async Task<bool> ConnectAsync()
+        public bool Connect()
         {
             if (FtpDetails == null)
             {
-                return await Task.FromResult(false);
+                return false;
             }
             SoundPlayer.PlayFtpConnect();
             _cancellationToken = new CancellationTokenSource();
@@ -41,7 +46,7 @@ namespace Pandora.Storage
             {
                 _ftpHelper = ftpHelper;
             }
-            return await Task.FromResult(_ftpHelper != null);
+            return _ftpHelper != null;
         }
 
         public void Disconnect()

@@ -2,12 +2,13 @@
 using Pandora.Models;
 using Pandora.Utils;
 using ReactiveUI;
+using System;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 
 namespace Pandora.ViewModels
 {
-    public partial class FtpPickerWindowViewModel : ViewModelBase
+    public partial class FtpPickerDialogWindowViewModel : ViewModelBase
     {
         public Window? Owner { get; set; }
 
@@ -17,32 +18,33 @@ namespace Pandora.ViewModels
 
         public ObservableCollection<FtpDetails> FtpDetailsList { get; }
 
-        private FtpDetails? _selectedFtpDetail;
+        public bool OkEnabled => SelectedFtpDetail != null;
+
+        public FtpDetails? _selectedFtpDetail;
         public FtpDetails? SelectedFtpDetail
         {
             get => _selectedFtpDetail;
-            set => this.RaiseAndSetIfChanged(ref _selectedFtpDetail, value);
+            set {
+                this.RaiseAndSetIfChanged(ref _selectedFtpDetail, value);
+                this.RaisePropertyChanged(nameof(OkEnabled));
+            }
         }
 
-        public FtpPickerWindowViewModel()
+        public event Action<bool>? OnResult;
+
+        public FtpPickerDialogWindowViewModel()
         {
             OkCommand = ReactiveCommand.Create(() =>
             {
-
+                OnResult?.Invoke(true);
+                Owner?.Close();
             });
 
             CancelCommand = ReactiveCommand.Create(() =>
             {
-                //if (Owner is FtpDetailsWindow ftpDetailsWindow)
-                //{
-                //    var index = ftpDetailsWindow.FtpDetailsGrid.SelectedIndex;
-                //    if (index >= 0)
-                //    {
-                //        FtpDetailsList?.RemoveAt(index);
-                //    }
-                //}
+                OnResult?.Invoke(false);
+                Owner?.Close();
             });
-
 
             var config = Config.LoadConfig();
             FtpDetailsList = [.. config.FtpServers];

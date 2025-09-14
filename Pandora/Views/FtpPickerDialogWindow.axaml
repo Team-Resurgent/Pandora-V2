@@ -6,31 +6,23 @@
         xmlns:views="clr-namespace:Pandora.Views"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         Width="800" Height="450"
-        x:Class="Pandora.FtpPickerWindow"
-        x:DataType="vm:FtpPickerWindowViewModel"
+        x:Class="Pandora.FtpPickerDialogWindow"
+        x:DataType="vm:FtpPickerDialogWindowViewModel"
         Icon="/Assets/icon.png"
         Title="Pandora - FTP Picker">
 
     <Design.DataContext>
         <!-- This only sets the DataContext for the previewer in an IDE,
              to set the actual DataContext for runtime, set the DataContext property in code (look at App.axaml.cs) -->
-        <vm:FtpPickerWindowViewModel/>
+        <vm:FtpPickerDialogWindowViewModel/>
     </Design.DataContext>
     
-    <ComboBox SelectedIndex="0" Width="200" MaxDropDownHeight="300" ItemsSource="{Binding FtpDetailsList}" SelectedItem="{Binding SelectedFtpDetail}">
-        <ComboBox.ItemTemplate>
-            <DataTemplate>
-                <TextBlock Text="{Binding Name}" />
-            </DataTemplate>
-        </ComboBox.ItemTemplate>
-    </ComboBox>
-    
-    <!--<Grid>
+    <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <DataGrid Grid.Row="0" x:Name="FtpDetailsGrid" Margin="10" ItemsSource="{Binding FtpDetailsList}" IsReadOnly="True" CanUserReorderColumns="True" CanUserResizeColumns="True" CanUserSortColumns="True" GridLinesVisibility="All" BorderThickness="2" BorderBrush="Green">
+        <DataGrid Grid.Row="0" Margin="10" ItemsSource="{Binding FtpDetailsList}" SelectedItem="{Binding SelectedFtpDetail}" IsReadOnly="True" CanUserReorderColumns="True" CanUserResizeColumns="True" CanUserSortColumns="True" GridLinesVisibility="All" BorderThickness="2" BorderBrush="Green">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Name" Binding="{Binding Name}" />
                 <DataGridTextColumn Header="Host" Binding="{Binding Host}" />
@@ -39,9 +31,9 @@
                 <DataGridTextColumn Header="Password" Binding="{Binding Password}" />
             </DataGrid.Columns>
         </DataGrid>
-        <StackPanel Grid.Row="1" Margin="10" Orientation="Horizontal">
-            <Button Content="Ok" Command="{Binding OkCommand}"></Button>
+        <StackPanel Grid.Row="1" Margin="10" Spacing="10" Orientation="Horizontal">
+            <Button Content="Ok" IsEnabled="{Binding OkEnabled}" Command="{Binding OkCommand}"></Button>
             <Button Content="Cancel" Command="{Binding CancelCommand}"></Button>
         </StackPanel>
-    </Grid>-->
+    </Grid>
 </Window>

@@ -10,20 +10,24 @@ namespace Pandora.Storage
     public class LocalStorageProvider : IStorageProvider
     {
         private ILogger _logger;
+        private IConnection _connection;
 
-        public LocalStorageProvider(ILogger logger)
+        public LocalStorageProvider(ILogger logger, IConnection connection)
         {
             _logger = logger;
+            _connection = connection;
         }
 
         public bool IsReadOnly => false;
 
         public Protocol Protocol => Protocol.Local;
 
-        public async Task<bool> ConnectAsync()
+        public IConnection Connection => _connection;
+
+        public bool Connect()
         {
             SoundPlayer.PlayDriveConnect();
-            return await Task.FromResult(true);
+            return true;
         }
 
         public void Disconnect()

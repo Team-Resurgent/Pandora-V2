@@ -209,59 +209,53 @@ namespace Pandora.Utils
             return false;
         }
 
-        public static async Task<FtpDetails?> ConnectIrcAsync(ILogger logger, CancellationTokenSource cancellationToken)
+        public static FtpDetails? ConnectIrc(ILogger logger, CancellationTokenSource cancellationToken)
         {
-            FtpDetails? ftpDetails = await Task.Run(() =>
+            var config = Config.LoadConfig();
+
+            var servers = config.EffnetServers;
+            for (var i = 0; i < servers.Length; i++)
             {
-                var config = Config.LoadConfig();
-
-                var servers = config.EffnetServers;
-                for (var i = 0; i < servers.Length; i++)
+                if (cancellationToken?.IsCancellationRequested ?? false)
                 {
-                    if (cancellationToken?.IsCancellationRequested ?? false)
+                    break;
+                }
+                logger.LogMessage("Connecting...", $"Tring to connect to '{servers[i]}'.");
+                var tcpClient = new TcpClient();
+                var result = tcpClient.BeginConnect(servers[i], 6667, null, null);
+                var waitHandle = result.AsyncWaitHandle;
+                try
+                {
+                    if (!result.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(30), false))
                     {
-                        break;
+                        tcpClient.Close();
+                        tcpClient.Dispose();
                     }
-                    logger.LogMessage("Connecting...", $"Tring to connect to '{servers[i]}'.");
-                    var tcpClient = new TcpClient();
-                    var result = tcpClient.BeginConnect(servers[i], 6667, null, null);
-                    var waitHandle = result.AsyncWaitHandle;
-                    try
+                    else
                     {
-                        if (!result.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(30), false))
+                        tcpClient.EndConnect(result);
+
+                        if (TryGetFtpDetails(logger, tcpClient, cancellationToken, out var ftpDetails))
                         {
-                            tcpClient.Close();
-                            tcpClient.Dispose();
+                            return ftpDetails;
                         }
-                        else
-                        {
-                            tcpClient.EndConnect(result);
 
-                            if (TryGetFtpDetails(logger, tcpClient, cancellationToken, out var ftpDetails))
-                            {
-                                return ftpDetails;
-                            }
+                        tcpClient.Close();
+                        tcpClient.Dispose();
 
-                            tcpClient.Close();
-                            tcpClient.Dispose();
-
-                        }
-                    }
-                    catch
-                    {
-                        // do nothing
-                    }
-                    finally
-                    {
-                        waitHandle.Close();
                     }
                 }
+                catch
+                {
+                    // do nothing
+                }
+                finally
+                {
+                    waitHandle.Close();
+                }
+            }
 
-                return null;
-
-
-            });
-            return ftpDetails;
+            return null;
         }
     }
 }

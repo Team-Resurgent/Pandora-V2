@@ -65,6 +65,7 @@
                     <Button Content="Clear Queue" Command="{Binding ClearQueueCommand}" />
                     <Button Content="Clear Completed" Command="{Binding ClearCompletedCommand}" />
                     <Button Content="Retry Failed" Command="{Binding RetryFailedCommand}" />
+                    <Button Content="Unpause" Command="{Binding UnpauseCommand}" />
                 </StackPanel>
             </StackPanel>
             <Grid>

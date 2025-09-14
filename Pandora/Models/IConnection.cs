@@ -41,8 +41,8 @@
     {
         public ConnectionType ConnectionType => ConnectionType.FTP;
 
-        public FtpDetails? FtpDetails { get; set; }
+        public FtpDetails FtpDetails { get; set; } = new();
 
-        public string Name => FtpDetails == null ? "FTP" : $"FTP - {FtpDetails?.Name ?? string.Empty}";
+        public string Name => "FTP";
     }
 }
