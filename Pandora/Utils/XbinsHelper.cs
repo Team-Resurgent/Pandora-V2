@@ -4,7 +4,6 @@ using System;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace Pandora.Utils
 {
@@ -61,7 +60,7 @@ namespace Pandora.Utils
             }
             catch (Exception ex)
             {
-                logger.LogMessage("Error", $"SendMessage: Exception occured, disconnecting. '{ex.Message}'.");
+                logger.LogMessage("Error", $"IRC Disconnected. Exception occurred during Send Message: '{ex.Message}'.");
                 cancellationToken?.Cancel();
             }
         }
@@ -91,7 +90,7 @@ namespace Pandora.Utils
             }
             catch (Exception ex)
             {
-                logger.LogMessage("Error", $"ReadResponse: Exception occured, disconnecting. '{ex.Message}'.");
+                logger.LogMessage("Error", $"IRC Disconnected. Exception occurred during Receive Message: '{ex.Message}'.");
                 cancellationToken?.Cancel();
                 return string.Empty;
             }
@@ -204,7 +203,7 @@ namespace Pandora.Utils
             }
             catch (Exception ex)
             {
-                logger.LogMessage("Error", $"Disconnecting as exception occured '{ex.Message}'.");
+                logger.LogMessage("Error", $"IRC Disconnected. Exception occurred during GetFTPDetails: '{ex.Message}'.");
             }
             return false;
         }
@@ -220,7 +219,7 @@ namespace Pandora.Utils
                 {
                     break;
                 }
-                logger.LogMessage("Connecting...", $"Tring to connect to '{servers[i]}'.");
+                logger.LogMessage("Connecting...", $"Attempting to connect to '{servers[i]}'.");
                 var tcpClient = new TcpClient();
                 var result = tcpClient.BeginConnect(servers[i], 6667, null, null);
                 var waitHandle = result.AsyncWaitHandle;

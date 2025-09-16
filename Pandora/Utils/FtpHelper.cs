@@ -32,16 +32,17 @@ namespace Pandora.Utils
                 }
                 catch (Exception ex)
                 {
-                    logger.LogMessage("Error", $"ConnectFTP: Unable to connect to FTP, disconnecting '{ex.Message}");
+                    logger.LogMessage("Error", $"Unable to connect to FTP Server: '{ex.Message}'.");
                     cancellationToken?.Cancel();
                     return false;
                 }
 
+                logger.LogMessage("Connected", $"Connected to FTP Server: {FtpClient.Host}.");
                 return true;
             }
             catch (Exception ex)
             {
-                logger.LogMessage("Error", $"ConnectFTP: Exception occured, disconnecting. '{ex.Message}'.");
+                logger.LogMessage("Error", $"Exception occurred: '{ex.Message}'.");
                 cancellationToken?.Cancel();
                 return false;
             }
