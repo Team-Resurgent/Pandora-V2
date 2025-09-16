@@ -2,11 +2,10 @@
 using Pandora.Logging;
 using Pandora.Models;
 using Pandora.Utils;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Threading;
-using System.Threading.Tasks;
-using Tmds.DBus.Protocol;
 
 namespace Pandora.Storage
 {
@@ -121,9 +120,10 @@ namespace Pandora.Storage
                 _ftpHelper.FtpClient.CreateDirectory(path);
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
                 // do nothing
+                _logger.LogMessage("FTP", $"Failed to Create Folder: {path}. Error: {ex.Message}");
             }
             return false;        
         }
@@ -148,9 +148,10 @@ namespace Pandora.Storage
                     }
                     return true;
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // do nothing
+                    //Log only.
+                    _logger.LogMessage("FTP", $"Failed to Delete: {fileItemInfo.Path}. Error: {ex.Message}");
                 }
             }
             return false;
@@ -182,9 +183,10 @@ namespace Pandora.Storage
                     }
                     return true;
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // do nothing
+                    //Log only.
+                    _logger.LogMessage("FTP", $"Failed to Rename: {fileItemInfo.Path}. Error: {ex.Message}");
                 }
             }
             return false;
@@ -198,9 +200,10 @@ namespace Pandora.Storage
                 {
                     return _ftpHelper.FtpClient.OpenWrite(path, FtpDataType.Binary, fileLen);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // do nothing
+                    //Log only.
+                    _logger.LogMessage("FTP", $"Failed to Write to: {path}. Error: {ex.Message}");
                 }
             }
             return null;
@@ -214,9 +217,10 @@ namespace Pandora.Storage
                 {
                     return _ftpHelper.FtpClient.OpenRead(path, FtpDataType.Binary, 0, fileLen);
                 }
-                catch
+                catch (Exception ex)
                 {
-                    // do nothing
+                    //Log only.
+                    _logger.LogMessage("FTP", $"Failed to Read From: {path}. Error: {ex.Message}");
                 }
             }
             return null;
