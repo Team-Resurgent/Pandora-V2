@@ -111,13 +111,26 @@ namespace Pandora.Utils
                             }
                             if (targetStream == null && item.DestConnection != null)
                             {
-                                _connectionManager.Connect(item.DestConnection);
-                            }
-                            _queue.Enqueue(item);
-                            Dispatcher.UIThread.Invoke(() =>
-                            {
-                                item.Progress = $"Reconnecting";
-                            });
+                                //Error handling for FTP to prevent looping - Usually things like Permission issues
+                                if (item.DestConnection.ConnectionType == ConnectionType.FTP)
+                                {
+                                    Dispatcher.UIThread.Invoke(() =>
+                                    {
+                                        item.Failed = true;
+                                        item.Progress = $"Failed";
+                                    });
+                                }
+                                else
+                                {
+                                    _connectionManager.Connect(item.DestConnection);
+
+                                    _queue.Enqueue(item);
+                                    Dispatcher.UIThread.Invoke(() =>
+                                    {
+                                        item.Progress = $"Reconnecting";
+                                    });
+                                }
+                            }                            
                             continue;
                         }
 
