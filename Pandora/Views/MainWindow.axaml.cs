@@ -4,6 +4,9 @@ using Avalonia.Input;
 using Pandora.Models;
 using Pandora.Utils;
 using Pandora.ViewModels;
+using ReactiveUI;
+using System.Collections.Specialized;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Pandora.Views
@@ -85,6 +88,20 @@ namespace Pandora.Views
             }
         }
 
+        private void OnLogDetailsChanged(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            if (sender is System.Collections.IList list && list.Count > 0)
+            {
+                var lastItem = list[list.Count - 1];
+                // Ensure scrolling happens on UI thread
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    if (LogDetailGrid.Columns.Count > 0)
+                        LogDetailGrid.ScrollIntoView(lastItem, LogDetailGrid.Columns[0]);
+                }, Avalonia.Threading.DispatcherPriority.Background);
+            }
+        }
+
         public MainWindow()
         {
             InitializeComponent();
@@ -122,6 +139,15 @@ namespace Pandora.Views
             {
                 var vm = DataContext as MainWindowViewModel;
                 vm?.OnDestContextMenuOpening(sender, e);
+            };
+
+            // Attach after DataContext is set
+            this.DataContextChanged += (sender, _) =>
+            {
+                if (sender is Window window && window.DataContext is MainWindowViewModel vm)
+                {
+                    vm.LogDetails.CollectionChanged += OnLogDetailsChanged;
+                }
             };
         }
     }
