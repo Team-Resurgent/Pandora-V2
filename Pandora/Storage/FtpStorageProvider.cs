@@ -1,10 +1,12 @@
 ﻿using FluentFTP;
+using FluentFTP.Helpers;
 using Pandora.Logging;
 using Pandora.Models;
 using Pandora.Utils;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Net;
 using System.Threading;
 
 namespace Pandora.Storage
@@ -32,12 +34,47 @@ namespace Pandora.Storage
 
         public Protocol Protocol => Protocol.FTP;
 
-        public bool Connect()
+        public bool IsValidFtpHost()
         {
             if (FtpDetails == null)
             {
                 return false;
             }
+
+            if (string.IsNullOrWhiteSpace(FtpDetails.Host))
+                return false;
+
+            FtpDetails.Host = FtpDetails.Host.Trim();
+
+            // Remove square brackets from IPv6 if present
+            if (FtpDetails.Host.StartsWith("[") && FtpDetails.Host.EndsWith("]"))
+            {
+                FtpDetails.Host = FtpDetails.Host[1..^1];
+            }
+
+            // Try IPv4
+            if (IPAddress.TryParse(FtpDetails.Host, out var ip))
+            {
+                return ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork ||
+                       ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6;
+            }
+
+            // Try simple domain/hostname validation
+            // Only allow letters, digits, hyphen, dot
+            const string domainPattern = @"^[a-zA-Z0-9.-]+$";
+            return System.Text.RegularExpressions.Regex.IsMatch(FtpDetails.Host, domainPattern);
+        }
+
+        public bool Connect()
+        {            
+            if (!IsValidFtpHost())
+            {
+                _logger.LogMessage("Error", "Unable to connect to FTP: Invalid Host. Check your details and try again!");
+                return false;
+            }
+
+            _logger.LogMessage("Connecting", $"Connecting to FTP: {FtpDetails.Host}");
+
             SoundPlayer.PlayFtpConnect();
             _cancellationToken = new CancellationTokenSource();
             var ftpHelper = new FtpHelper();
@@ -54,6 +91,8 @@ namespace Pandora.Storage
             _ftpHelper?.Disconnect();
             _ftpHelper = null;
             SoundPlayer.PlayFtpDisconnect();
+
+            _logger.LogMessage("Disconnected", $"Disconnected from FTP.");
         }
 
         public bool TryGetRootItems(out IEnumerable<RootItemInfo> rootItems)
