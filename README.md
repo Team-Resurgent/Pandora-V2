@@ -37,6 +37,18 @@ Get ready to open that box up nice and wide :)
 * Click on Connect
 * Win!!!
 
+### Apple Silicon Macs
+
+Use the `Pandora-osx-arm64.tar` release for a native Apple Silicon build. Extract
+the archive and run `./pandora` from Terminal in the extracted directory.
+
+To build from source, install the [.NET 8 SDK for macOS Arm64](https://dotnet.microsoft.com/en-us/download/dotnet/8.0), then run from the repository root:
+
+```sh
+dotnet publish Pandora/Pandora.csproj -c Release -r osx-arm64 --self-contained true -o ./publish/osx-arm64
+./publish/osx-arm64/pandora
+```
+
 ## Known Issues
 * We never have bugs :)
 

@@ -10,22 +10,45 @@ permissions:
   contents: write
 
 jobs:
+  local-path-regression:
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v5.0.0
+    - uses: actions/setup-dotnet@v4.3.1
+      with:
+        dotnet-version: 8.0.x
+    - name: Check local download destinations
+      shell: bash
+      run: |
+        rid=$(dotnet --info | awk '/RID:/ { gsub("\r", ""); print $2; exit }')
+        dotnet run --project tests/PathRegression -r "$rid" --self-contained true -p:PublishReadyToRun=false
+
   build:
 
     runs-on: ubuntu-latest
 
     strategy:
       matrix:
-        arch: [x64]
-        os_flavor: [win-x64, linux-x64, osx-x64]
+        os_flavor: [win-x64, linux-x64, osx-x64, osx-arm64]
         project: [Pandora]
         project_lowercase: [pandora]
         include:
           - os_flavor: win-x64
+            arch: x64
             archive_ext: zip
           - os_flavor: linux-x64
+            arch: x64
             archive_ext: tar
           - os_flavor: osx-x64
+            arch: x64
+            archive_ext: tar
+          - os_flavor: osx-arm64
+            arch: arm64
             archive_ext: tar
 
     steps:
@@ -39,7 +62,7 @@ jobs:
     - name: Check publish output
       run: ls -laR ${{ github.workspace }}/artifacts/${{ matrix.project }}/
     - name: Chmod (Unix)
-      if: ${{ matrix.os_flavor == 'linux-x64' || matrix.os_flavor == 'osx-x64' }}
+      if: ${{ matrix.os_flavor == 'linux-x64' || startsWith(matrix.os_flavor, 'osx-') }}
       run: chmod +x ${{ github.workspace }}/artifacts/${{ matrix.project }}/${{ matrix.os_flavor }}-${{ matrix.arch }}/${{ matrix.project_lowercase }}
     - name: Compress binaries
       run: 7z a ${{ github.workspace }}/${{ matrix.project }}-${{ matrix.os_flavor }}.${{ matrix.archive_ext }} ${{ github.workspace }}/artifacts/${{ matrix.project }}/${{ matrix.os_flavor }}-${{ matrix.arch }}/*
